@@ -1,7 +1,689 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>OPERA Performance Measurement &mdash; GroverWebServices API .1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="GroverWebServices API .1 documentation" href="#" /> 
+  </head>
   <body>
-    <h1>Hello World</h1>
-    <p>Web Services API Doc</p>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">GroverWebServices API .1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="opera-performance-measurement">
+<h1>OPERA Performance Measurement<a class="headerlink" href="#opera-performance-measurement" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="reg-lab-groverwebservices-python-api-documentation">
+<h1>REG Lab GroverWebServices Python API Documentation<a class="headerlink" href="#reg-lab-groverwebservices-python-api-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-GroverWebServices">
+<span id="groverwebservices-module"></span><h2><a class="reference internal" href="#module-GroverWebServices" title="GroverWebServices"><tt class="xref py py-mod docutils literal"><span class="pre">GroverWebServices</span></tt></a> Module<a class="headerlink" href="#module-GroverWebServices" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="#module-GroverWebServices" title="GroverWebServices"><tt class="xref py py-mod docutils literal"><span class="pre">GroverWebServices</span></tt></a> is a python module defining class objects that model and provide access to PerfAnt performance testing results stored in Grover databases.</p>
+<p>The module provides two basic functional categories. The first, is <a class="reference internal" href="#gws-api-ref"><em>Low Level Grover Web Services API</em></a> that directly models the Grover web services interface. The second is a value added service (this section) implementing high level abstractions to make accessing results more convenient.</p>
+<dl class="class">
+<dt id="GroverWebServices.GroverCommandLineArgument">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverCommandLineArgument</tt><big>(</big><em>runarg</em>, <em>peak_default=True</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommandLineArgument"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object class representing Grover run results at a specified load point. <em>runarg</em> is a string that takes the form <tt class="docutils literal"><span class="pre">runid[:lp_id|lp_index]</span></tt>, where <em>runid</em> is Grover runid, <em>lp_id</em> is optional Grover loadpoint identifier (of the form <em>iter_loadpoint</em>, eg. 1_10000) <strong>or</strong> <em>lp_index</em> is optional numerical index (start=1). Special forms of <strong>symbolic</strong> load point specification are one of: <tt class="docutils literal"><span class="pre">&quot;all&quot;,</span> <span class="pre">&quot;peak&quot;</span> <span class="pre">or</span> <span class="pre">&quot;last&quot;</span></tt>. If the optional load point is omitted then peak is assumed unless <em>peak_default=False</em>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body">SFS is a notable exception to the standard <em>lp_id</em> format.</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">GroverWebServices</span>
+<span class="n">run_iter</span> <span class="o">=</span> <span class="n">GroverWebServices</span><span class="o">.</span><span class="n">GroverCommandLineArgument</span><span class="p">(</span><span class="s">&quot;120330gav:peak&quot;</span><span class="p">)</span>
+<span class="n">run_iter</span> <span class="o">=</span> <span class="n">GroverWebServices</span><span class="o">.</span><span class="n">GroverCommandLineArgument</span><span class="p">(</span><span class="s">&quot;120330gav:5_22000&quot;</span><span class="p">)</span>
+<span class="n">run_iter</span> <span class="o">=</span> <span class="n">GroverWebServices</span><span class="o">.</span><span class="n">GroverCommandLineArgument</span><span class="p">(</span><span class="s">&quot;120330gav:5&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>All the above create the same run object instance at the same load point.</p>
+<p>Object instantiation does little more than syntax checking. Explicit invocation of additional methods are required to visit the Grover database and retrieve test parameters, results, and command output.</p>
+<dl class="method">
+<dt id="GroverWebServices.GroverCommandLineArgument.get_command">
+<tt class="descname">get_command</tt><big>(</big><em>cmd</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommandLineArgument.get_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.get_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method to retrieve <a class="reference internal" href="#GroverWebServices.GroverCommand" title="GroverWebServices.GroverCommand"><tt class="xref py py-class docutils literal"><span class="pre">GroverCommand</span></tt></a> object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cmd</strong> &#8211; String with Grover command as it appears in <tt class="docutils literal"><span class="pre">output</span></tt> output file in results. Thus prior knowledge of commands collected is required. For a list of commands at a given load point use <a class="reference internal" href="#GroverWebServices.GroverResult.get_command_list" title="GroverWebServices.GroverResult.get_command_list"><tt class="xref py py-func docutils literal"><span class="pre">GroverResult.get_command_list()</span></tt></a>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#GroverWebServices.GroverCommand" title="GroverWebServices.GroverCommand"><tt class="xref py py-class docutils literal"><span class="pre">GroverCommand</span></tt></a> object</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ifstat</span> <span class="o">=</span> <span class="n">run_iter</span><span class="o">.</span><span class="n">get_command</span><span class="p">(</span><span class="s">&quot;ifstat -a -v results AFTER the measurement&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverWebServices.GroverCommandLineArgument.get_result">
+<tt class="descname">get_result</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommandLineArgument.get_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.get_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method to retrieve test results from Grover.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#GroverWebServices.GroverResult" title="GroverWebServices.GroverResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverResult</span></tt></a> object.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommandLineArgument.lp">
+<tt class="descname">lp</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.lp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute holding load point part of <em>runarg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommandLineArgument.lp_id">
+<tt class="descname">lp_id</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.lp_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute with load point identifier part of <em>runarg</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommandLineArgument.lp_index">
+<tt class="descname">lp_index</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.lp_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object atrribute with numeric index of load point (start=1)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommandLineArgument.result">
+<tt class="descname">result</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute holding <a class="reference internal" href="#GroverWebServices.GroverResult" title="GroverWebServices.GroverResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverResult</span></tt></a> object, Must use <a class="reference internal" href="#GroverWebServices.GroverCommandLineArgument.get_result" title="GroverWebServices.GroverCommandLineArgument.get_result"><tt class="xref py py-func docutils literal"><span class="pre">get_result()</span></tt></a> to instantiate.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommandLineArgument.runid">
+<tt class="descname">runid</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommandLineArgument.runid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute with runid portion of <em>runarg</em></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverWebServices.GroverResult">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverResult</tt><a class="reference internal" href="_modules/GroverWebServices.html#GroverResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>An object class representing a grover run result identifed by runid, eg.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">result</span> <span class="o">=</span> <span class="n">GroverResult</span><span class="p">(</span><span class="s">&#39;112233abc&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#GroverWebServices.GroverResult" title="GroverWebServices.GroverResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverResult</span></tt></a> objects contain test parameters and overall test results for a performance test run under PerfAnt. The <a class="reference internal" href="#GroverWebServices.GroverResult" title="GroverWebServices.GroverResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverResult</span></tt></a> object is an abstraction containing globally significant test information such as settings, overrides, load points and, lists of commands collected at each load point.</p>
+<blockquote>
+<div><dl class="staticmethod">
+<dt id="GroverWebServices.GroverResult.get_command_list">
+<em class="property">static </em><tt class="descname">get_command_list</tt><big>(</big><em>lp</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverResult.get_command_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverResult.get_command_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of commands for the specified load point. Argument <em>lp</em> can take on any of the possible forms of load point specifier as documented in <a class="reference internal" href="#GroverWebServices.GroverCommandLineArgument" title="GroverWebServices.GroverCommandLineArgument"><tt class="xref py py-class docutils literal"><span class="pre">GroverCommandLineArgument</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="GroverWebServices.GroverResult.get_runinfo">
+<em class="property">static </em><tt class="descname">get_runinfo</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverResult.get_runinfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverResult.get_runinfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method that returns a string with runid, purpose, Ontap version, and test status code.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="GroverWebServices.GroverResult.get_num_load_points">
+<em class="property">static </em><tt class="descname">get_num_load_points</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverResult.get_num_load_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverResult.get_num_load_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of test iterations executed.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="GroverWebServices.GroverResult.get_lp_id_list">
+<em class="property">static </em><tt class="descname">get_lp_id_list</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverResult.get_lp_id_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverResult.get_lp_id_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns list of test iterations executed load point identifiers.</p>
+</dd></dl>
+
+</div></blockquote>
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.client_name_list">
+<tt class="descname">client_name_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.client_name_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of client names</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.cluster_mode">
+<tt class="descname">cluster_mode</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.cluster_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set to <tt class="docutils literal"><span class="pre">True</span></tt> if Cmode test</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.filer_name_list">
+<tt class="descname">filer_name_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.filer_name_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of filer names associated with this test</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.num_clients">
+<tt class="descname">num_clients</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.num_clients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of clients</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.ontap_version">
+<tt class="descname">ontap_version</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.ontap_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build tag of Ontap. Set to &#8216;<tt class="docutils literal"><span class="pre">Private</span> <span class="pre">Build</span></tt>&#8216; if private build.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.perfant_user">
+<tt class="descname">perfant_user</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.perfant_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>User identifier test ran under</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.protocol">
+<tt class="descname">protocol</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.protocol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test protocol</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.purpose">
+<tt class="descname">purpose</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.purpose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test purpose string</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.results_dir">
+<tt class="descname">results_dir</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.results_dir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test results directory</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.run_notes">
+<tt class="descname">run_notes</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.run_notes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test run notes</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.runid">
+<tt class="descname">runid</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.runid" title="Permalink to this definition">¶</a></dt>
+<dd><p>The runid of this test result.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.sio_procs">
+<tt class="descname">sio_procs</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.sio_procs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of sio procs</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.testname">
+<tt class="descname">testname</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.testname" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for workload</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.tload_list">
+<tt class="descname">tload_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.tload_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>test tload parameter (i.e. defined load points)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.two_node">
+<tt class="descname">two_node</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.two_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set to True if this is a two node test otherwise False</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverResult.workload">
+<tt class="descname">workload</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverResult.workload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test workload name</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverWebServices.GroverCommand">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverCommand</tt><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object base class to access and represent command output captured during a test run linked to a parent <a class="reference internal" href="#GroverWebServices.GroverResult" title="GroverWebServices.GroverResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverResult</span></tt></a> class.</p>
+<dl class="method">
+<dt id="GroverWebServices.GroverCommand.get_text_output">
+<tt class="descname">get_text_output</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommand.get_text_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommand.get_text_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method returning text output of command.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Command output text string.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverWebServices.GroverCommand.get_xml_output">
+<tt class="descname">get_xml_output</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverCommand.get_xml_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverCommand.get_xml_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method returning XML text of command output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">XML representation of command text string.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommand.no_xml">
+<tt class="descname">no_xml</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommand.no_xml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute indicating that no xml form of command available from grover</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverCommand.result">
+<tt class="descname">result</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverCommand.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding parent result object</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="low-level-grover-web-services-api">
+<span id="gws-api-ref"></span><h3>Low Level Grover Web Services API<a class="headerlink" href="#low-level-grover-web-services-api" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="GroverWebServices.GroverGetTestInfo">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverGetTestInfo</tt><big>(</big><em>runid</em>, <em>user='auto_script'</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverGetTestInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object class representing a Grover getTestInfo web service call. All first level XML tags returned from grover are converted to object class attributes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>runid</strong> &#8211; runid of test</li>
+<li><strong>user</strong> &#8211; DO NOT CHANGE</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="GroverWebServices.GroverGetTestInfo.get_metric">
+<tt class="descname">get_metric</tt><big>(</big><em>name</em>, <em>attrib='value'</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverGetTestInfo.get_metric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo.get_metric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method to access Grover provided getTestInfo metrics. See <a class="reference internal" href="#GroverWebServices.GroverGetTestInfo.get_metrics_list" title="GroverWebServices.GroverGetTestInfo.get_metrics_list"><tt class="xref py py-meth docutils literal"><span class="pre">get_metrics_list()</span></tt></a> method for current list of known metrics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; metric name, i.e. first level <a class="reference internal" href="#GroverWebServices.GroverGetTestInfo.metrics_dict" title="GroverWebServices.GroverGetTestInfo.metrics_dict"><tt class="xref py py-attr docutils literal"><span class="pre">metrics_dict</span></tt></a> key</li>
+<li><strong>attrib</strong> &#8211; metric type to return. Known types are <tt class="docutils literal"><span class="pre">'value'</span></tt> (default) which returns metric value and <tt class="docutils literal"><span class="pre">'unit'</span></tt> which returns metric units.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">dictionary value from <a class="reference internal" href="#GroverWebServices.GroverGetTestInfo.metrics_dict" title="GroverWebServices.GroverGetTestInfo.metrics_dict"><tt class="xref py py-attr docutils literal"><span class="pre">metrics_dict</span></tt></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverWebServices.GroverGetTestInfo.get_metrics_list">
+<tt class="descname">get_metrics_list</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverGetTestInfo.get_metrics_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo.get_metrics_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method that returns list of metrics returned from getTestInfo, i.e. list of <a class="reference internal" href="#GroverWebServices.GroverGetTestInfo.metrics_dict" title="GroverWebServices.GroverGetTestInfo.metrics_dict"><tt class="xref py py-attr docutils literal"><span class="pre">metrics_dict</span></tt></a> first level keys.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of strings</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverGetTestInfo.metrics_dict">
+<tt class="descname">metrics_dict</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo.metrics_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute as two-dimentional dictionary containing metrics imbedded in Grover provided <tt class="docutils literal"><span class="pre">/MasterTest/Metrics</span></tt> XML node. First index is metric name. Second index is desired value. The preferred method to access metrics is through <a class="reference internal" href="#GroverWebServices.GroverGetTestInfo.get_metric" title="GroverWebServices.GroverGetTestInfo.get_metric"><tt class="xref py py-meth docutils literal"><span class="pre">get_metric()</span></tt></a> method.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverGetTestInfo.run_list">
+<tt class="descname">run_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo.run_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute containing list of <a class="reference internal" href="#GroverWebServices.GroverTestInfoRun" title="GroverWebServices.GroverTestInfoRun"><tt class="xref py py-class docutils literal"><span class="pre">GroverTestInfoRun</span></tt></a> objects imbedded in getTestInfo XML response.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverGetTestInfo.runid_list">
+<tt class="descname">runid_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverGetTestInfo.runid_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object attribute containing list of runid&#8217;s associated with this run</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverWebServices.GroverTestInfoRun">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverTestInfoRun</tt><a class="reference internal" href="_modules/GroverWebServices.html#GroverTestInfoRun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverTestInfoRun" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read-only object class representing run imbedded in grover getTestInfo XML response. All first level XML tags are converted to object class attributes.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverWebServices.GroverEventSearch">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverEventSearch</tt><a class="reference internal" href="_modules/GroverWebServices.html#GroverEventSearch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverEventSearch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object class respresenting Grover eventSearch web service call. Event search parameters are extensive and must be checked at time of execution. Object instantiation simply provides a place holder for adding member attributes that are converted to XML name/value pairs in HTML request. The search executes when the <a class="reference internal" href="#GroverWebServices.GroverEventSearch.search" title="GroverWebServices.GroverEventSearch.search"><tt class="xref py py-meth docutils literal"><span class="pre">search()</span></tt></a> method is invoked. To see full list of parameters display contents of <tt class="xref py py-attr docutils literal"><span class="pre">GroverEventSearch._service.parameters</span></tt> attribute.</p>
+<dl class="attribute">
+<dt id="GroverWebServices.GroverEventSearch.context_dict">
+<tt class="descname">context_dict</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverEventSearch.context_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding dictionary of <a class="reference internal" href="#GroverWebServices.GroverEventSearchResult" title="GroverWebServices.GroverEventSearchResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverEventSearchResult</span></tt></a> objects indexed by context id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverEventSearch.event_dict">
+<tt class="descname">event_dict</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverEventSearch.event_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding dictionary of <a class="reference internal" href="#GroverWebServices.GroverEventSearchResult" title="GroverWebServices.GroverEventSearchResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverEventSearchResult</span></tt></a> objects indexed by event id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverEventSearch.primary_dict">
+<tt class="descname">primary_dict</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverEventSearch.primary_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding multi-dimensional dictionary indexed by event id as primary key. Within event id dictionary is two indexes: <tt class="docutils literal"><span class="pre">'contexts'</span></tt> and <tt class="docutils literal"><span class="pre">'runids'</span></tt>. The <tt class="docutils literal"><span class="pre">'contexts'</span></tt> value contains yet another dictionary indexed by one or more context ids that each contain a <a class="reference internal" href="#GroverWebServices.GroverEventSearchResult" title="GroverWebServices.GroverEventSearchResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverEventSearchResult</span></tt></a> object. The <tt class="docutils literal"><span class="pre">'runids'</span></tt> value is a list of <a class="reference internal" href="#GroverWebServices.GroverEventSearchResult" title="GroverWebServices.GroverEventSearchResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverEventSearchResult</span></tt></a> objects</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverWebServices.GroverEventSearch.result_list">
+<tt class="descname">result_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverWebServices.GroverEventSearch.result_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding list of <a class="reference internal" href="#GroverWebServices.GroverEventSearchResult" title="GroverWebServices.GroverEventSearchResult"><tt class="xref py py-class docutils literal"><span class="pre">GroverEventSearchResult</span></tt></a> objects</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverWebServices.GroverEventSearch.search">
+<tt class="descname">search</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverEventSearch.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverEventSearch.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method that invokes Grover eventSearch web service.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of event ids matching search criteria. First level XML tags from Grover response as class member attributes.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverWebServices.GroverEventSearchResult">
+<em class="property">class </em><tt class="descclassname">GroverWebServices.</tt><tt class="descname">GroverEventSearchResult</tt><big>(</big><em>e</em><big>)</big><a class="reference internal" href="_modules/GroverWebServices.html#GroverEventSearchResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverWebServices.GroverEventSearchResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Grover eventSearch embedded Result object.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-GroverStatsDisk">
+<span id="groverstatsdisk-module"></span><h2><a class="reference internal" href="#module-GroverStatsDisk" title="GroverStatsDisk"><tt class="xref py py-mod docutils literal"><span class="pre">GroverStatsDisk</span></tt></a> Module<a class="headerlink" href="#module-GroverStatsDisk" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="#module-GroverStatsDisk" title="GroverStatsDisk"><tt class="xref py py-mod docutils literal"><span class="pre">GroverStatsDisk</span></tt></a> is a python module defining classes and objects relevant for the &#8220;stats disk&#8221; command.</p>
+<dl class="class">
+<dt id="GroverStatsDisk.GroverStatsDisk">
+<em class="property">class </em><tt class="descclassname">GroverStatsDisk.</tt><tt class="descname">GroverStatsDisk</tt><big>(</big><em>run</em><big>)</big><a class="reference internal" href="_modules/GroverStatsDisk.html#GroverStatsDisk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object class representing &#8220;stats disk&#8221; command.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>run</strong> &#8211; The <a class="reference internal" href="#GroverWebServices.GroverCommandLineArgument" title="GroverWebServices.GroverCommandLineArgument"><tt class="xref py py-class docutils literal"><span class="pre">GroverWebServices.GroverCommandLineArgument</span></tt></a> object representing the runid and load point where command is retrieved.</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">GroverWebServices</span>
+<span class="kn">import</span> <span class="nn">GroverStatsDisk</span>
+
+<span class="n">run</span> <span class="o">=</span> <span class="n">GroverWebServices</span><span class="o">.</span><span class="n">GroverCommandLineArgument</span><span class="p">(</span><span class="s">&quot;120330gav:peak&quot;</span><span class="p">)</span>
+<span class="n">stats_disk</span> <span class="o">=</span> <span class="n">GroverStatsDisk</span><span class="o">.</span><span class="n">GroverStatsDisk</span><span class="p">(</span><span class="n">run</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">stats_disk</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="GroverStatsDisk.GroverStatsDisk.aggr1_disk_id_list">
+<tt class="descname">aggr1_disk_id_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.aggr1_disk_id_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding list of disk drives identifiers assigned to aggr1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.GroverStatsDisk.data_disk_id_list">
+<tt class="descname">data_disk_id_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.data_disk_id_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding list of <cite>raid_type: data</cite> disk identifiers</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.GroverStatsDisk.data_disk_list">
+<tt class="descname">data_disk_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.data_disk_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding list of <cite>raid_type: parity</cite> disk identifiers</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverStatsDisk.GroverStatsDisk.get_read_ops_stats">
+<tt class="descname">get_read_ops_stats</tt><big>(</big><em>disk_type='data'</em><big>)</big><a class="reference internal" href="_modules/GroverStatsDisk.html#GroverStatsDisk.get_read_ops_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.get_read_ops_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object method returning disk read op rate statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>disk_type</strong> &#8211; Specfies type of disk. Currently only type <tt class="docutils literal"><span class="pre">'data'</span></tt> supported</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#GroverStatsDisk.DiskStats" title="GroverStatsDisk.DiskStats"><tt class="xref py py-class docutils literal"><span class="pre">DiskStats</span></tt></a> object</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Todo:</th><td class="field-body">add disk_type  = <tt class="docutils literal"><span class="pre">'parity'</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverStatsDisk.GroverStatsDisk.get_text_output">
+<tt class="descname">get_text_output</tt><big>(</big><big>)</big><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.get_text_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method returning text output of command.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Command output text string.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverStatsDisk.GroverStatsDisk.get_xml_output">
+<tt class="descname">get_xml_output</tt><big>(</big><big>)</big><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.get_xml_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method returning XML text of command output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">XML representation of command text string.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverStatsDisk.GroverStatsDisk.output">
+<tt class="descname">output</tt><big>(</big><big>)</big><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to retrieve command text output.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.GroverStatsDisk.parity_disk_id_list">
+<tt class="descname">parity_disk_id_list</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.parity_disk_id_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding list of <cite>raid_type: data</cite> disk identifiers</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.GroverStatsDisk.run">
+<tt class="descname">run</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute storing the <tt class="xref py py-class docutils literal"><span class="pre">GroverComandLineArgument</span></tt> object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="GroverStatsDisk.GroverStatsDisk.xml">
+<tt class="descname">xml</tt><big>(</big><big>)</big><a class="headerlink" href="#GroverStatsDisk.GroverStatsDisk.xml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to retrieve command XML output.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="GroverStatsDisk.DiskStats">
+<em class="property">class </em><tt class="descclassname">GroverStatsDisk.</tt><tt class="descname">DiskStats</tt><big>(</big><em>stats_list</em><big>)</big><a class="reference internal" href="_modules/GroverStatsDisk.html#DiskStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#GroverStatsDisk.DiskStats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object class returning mathematical statistics for user provided list of numbers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>stats_list</strong> &#8211; List of numbers used to calculate statistics.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Statical caclulations stored in object members.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Todo:</th><td class="field-body">add confidence interval stat</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="GroverStatsDisk.DiskStats.cv">
+<tt class="descname">cv</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.DiskStats.cv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding statistical coefficient of variance percent (%) of <em>stats_list</em> vector</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.DiskStats.max">
+<tt class="descname">max</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.DiskStats.max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding statistical maximum of <em>stats_list</em> vector</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.DiskStats.mean">
+<tt class="descname">mean</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.DiskStats.mean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding statistical mean of <em>stats_list</em> vector</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.DiskStats.min">
+<tt class="descname">min</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.DiskStats.min" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding statistical minimum of <em>stats_list</em> vector</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="GroverStatsDisk.DiskStats.std">
+<tt class="descname">std</tt><em class="property"> = None</em><a class="headerlink" href="#GroverStatsDisk.DiskStats.std" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute holding statistical standard deviation of <em>stats_list</em> vector</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">OPERA Performance Measurement</a></li>
+<li><a class="reference internal" href="#reg-lab-groverwebservices-python-api-documentation">REG Lab GroverWebServices Python API Documentation</a><ul>
+<li><a class="reference internal" href="#module-GroverWebServices"><tt class="docutils literal"><span class="pre">GroverWebServices</span></tt> Module</a><ul>
+<li><a class="reference internal" href="#low-level-grover-web-services-api">Low Level Grover Web Services API</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-GroverStatsDisk"><tt class="docutils literal"><span class="pre">GroverStatsDisk</span></tt> Module</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">GroverWebServices API .1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Bob Allegretti.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
   </body>
 </html>
