@@ -1,0 +1,281 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>GroverStatsDisk &mdash; GroverWebServices API .1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="GroverWebServices API .1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">GroverWebServices API .1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for GroverStatsDisk</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python2.6</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">:mod:`GroverStatsDisk` is a python module defining classes and objects relevant for the &quot;stats disk&quot; command.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">import</span> <span class="nn">GroverStatsCommand</span>
+
+
+<span class="c">################################################################################</span>
+
+<div class="viewcode-block" id="DiskStats"><a class="viewcode-back" href="../index.html#GroverStatsDisk.DiskStats">[docs]</a><span class="k">class</span> <span class="nc">DiskStats</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object class returning mathematical statistics for user provided list of numbers.</span>
+
+<span class="sd">    :param stats_list: List of numbers used to calculate statistics.</span>
+<span class="sd">    :return: Statical caclulations stored in object members.</span>
+<span class="sd">    :todo: add confidence interval stat</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">stats_list</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Attribute holding statistical mean of *stats_list* vector&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Attribute holding statistical standard deviation of *stats_list* vector&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cv</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Attribute holding statistical coefficient of variance percent (%) of *stats_list* vector&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Attribute holding statistical minimum of *stats_list* vector&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Attribute holding statistical maximum of *stats_list* vector&quot;</span>
+
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">stats_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cv</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cv</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">std</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+
+<span class="c">################################################################################</span>
+</div>
+<span class="k">class</span> <span class="nc">Disk</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">stats_disk</span><span class="p">,</span><span class="n">disk_id</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span> <span class="o">=</span> <span class="n">stats_disk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">disk_id</span> <span class="o">=</span> <span class="n">disk_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">disk_type</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_read_ops</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_write_ops</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_read_lat</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_write_lat</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_read_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disk_id</span><span class="p">,</span><span class="s">&quot;user_reads&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_write_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disk_id</span><span class="p">,</span><span class="s">&quot;user_writes&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_read_lat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disk_id</span><span class="p">,</span><span class="s">&quot;user_read_latency&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_write_lat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disk_id</span><span class="p">,</span><span class="s">&quot;user_write_latency&quot;</span><span class="p">)</span>
+
+
+<span class="c">################################################################################</span>
+
+<span class="k">class</span> <span class="nc">Adapter</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">stats_disk</span><span class="p">,</span><span class="n">adapter_port</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span> <span class="o">=</span> <span class="n">stats_disk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapter_port</span> <span class="o">=</span> <span class="n">adapter_port</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">disk_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<span class="c">################################################################################</span>
+
+<span class="k">class</span> <span class="nc">RaidGroup</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">stats_disk</span><span class="p">,</span><span class="n">rg_id</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats_disk</span> <span class="o">=</span> <span class="n">stats_disk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rg_id</span> <span class="o">=</span> <span class="n">rg_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">disk_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<span class="c">################################################################################</span>
+
+<div class="viewcode-block" id="GroverStatsDisk"><a class="viewcode-back" href="../index.html#GroverStatsDisk.GroverStatsDisk">[docs]</a><span class="k">class</span> <span class="nc">GroverStatsDisk</span><span class="p">(</span><span class="n">GroverStatsCommand</span><span class="o">.</span><span class="n">GroverStatsCommand</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object class representing &quot;stats disk&quot; command.</span>
+
+<span class="sd">    :param run: The :class:`GroverWebServices.GroverCommandLineArgument` object representing the runid and load point where command is retrieved.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        import GroverWebServices</span>
+<span class="sd">        import GroverStatsDisk</span>
+
+<span class="sd">        run = GroverWebServices.GroverCommandLineArgument(&quot;120330gav:peak&quot;)</span>
+<span class="sd">	stats_disk = GroverStatsDisk.GroverStatsDisk(run)</span>
+<span class="sd">        print stats_disk.output()</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">run</span><span class="p">):</span>
+        <span class="n">GroverStatsCommand</span><span class="o">.</span><span class="n">GroverStatsCommand</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="s">&quot;stats disk&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">run</span> <span class="o">=</span> <span class="n">run</span>
+        <span class="s">&quot;Attribute storing the :class:`GroverComandLineArgument` object.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aggr0_disk_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aggr1_disk_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Attribute holding list of disk drives identifiers assigned to aggr1&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Attribute holding list of `raid_type: data` disk identifiers&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Attribute holding list of `raid_type: parity` disk identifiers&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parity_disk_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Attribute holding list of `raid_type: data` disk identifiers&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_latency_stats</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_latency_stats</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_ops_stats</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_ops_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_ops_stats</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_ops_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c"># find all the data disks (I won&#39;t even begin to figure out how to do this with xpath)</span>
+
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&quot;.*raid_type:data&quot;</span><span class="p">)</span>
+        <span class="n">data_disk_id_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">disk</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">())]</span>
+
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&quot;.*raid_group:.*aggr1&quot;</span><span class="p">)</span>
+        <span class="n">aggr1_disk_id_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">disk</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">())]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_id_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data_disk_id_list</span><span class="p">),</span><span class="nb">set</span><span class="p">(</span><span class="n">aggr1_disk_id_list</span><span class="p">)))</span>
+        <span class="c"># we have the list of data disk ids. now create a list of disk</span>
+        <span class="c"># objects where stats and other information can be kept.</span>
+        <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_id_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Disk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">disk</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">get_disk_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">op</span><span class="p">):</span>
+        <span class="n">stat_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_id_list</span><span class="p">:</span>
+            <span class="n">ops</span><span class="p">,</span><span class="n">unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="n">disk</span><span class="p">,</span><span class="n">op</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ops</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">stat_dict</span><span class="p">[</span><span class="n">disk</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stat_dict</span><span class="p">[</span><span class="n">disk</span><span class="p">]</span> <span class="o">=</span> <span class="n">ops</span>
+        <span class="k">return</span> <span class="n">stat_dict</span>
+
+<div class="viewcode-block" id="GroverStatsDisk.get_read_ops_stats"><a class="viewcode-back" href="../index.html#GroverStatsDisk.GroverStatsDisk.get_read_ops_stats">[docs]</a>    <span class="k">def</span> <span class="nf">get_read_ops_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="s">&#39;data&#39;</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method returning disk read op rate statistics.</span>
+
+<span class="sd">        :param disk_type: Specfies type of disk. Currently only type ``&#39;data&#39;`` supported</span>
+<span class="sd">        :return: :class:`DiskStats` object</span>
+<span class="sd">        :todo: add disk_type  = ``&#39;parity&#39;``</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_ops_stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_ops_stats</span> <span class="o">=</span> <span class="n">DiskStats</span><span class="p">([</span><span class="n">disk</span><span class="o">.</span><span class="n">get_read_ops</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span><span class="p">])</span>
+            <span class="s">&quot;Object attribute holding returned dictionary.&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_ops_stats</span>
+</div>
+    <span class="k">def</span> <span class="nf">get_write_ops_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="s">&#39;data&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_ops_stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_ops_stats</span> <span class="o">=</span> <span class="n">DiskStats</span><span class="p">([</span><span class="n">disk</span><span class="o">.</span><span class="n">get_write_ops</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_ops_stats</span>
+
+    <span class="k">def</span> <span class="nf">get_read_latency_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="s">&#39;data&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_latency_stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_latency_stats</span> <span class="o">=</span> <span class="n">DiskStats</span><span class="p">([</span><span class="n">disk</span><span class="o">.</span><span class="n">get_read_lat</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_latency_stats</span>
+
+    <span class="k">def</span> <span class="nf">get_write_latency_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="s">&#39;data&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_latency_stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_latency_stats</span> <span class="o">=</span> <span class="n">DiskStats</span><span class="p">([</span><span class="n">disk</span><span class="o">.</span><span class="n">get_write_lat</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_disk_list</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_latency_stats</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="kn">import</span> <span class="nn">GroverWebServices</span>
+
+    <span class="n">runid_string</span> <span class="o">=</span> <span class="s">&quot;140222gar:83952&quot;</span>
+    <span class="n">run</span> <span class="o">=</span> <span class="n">GroverWebServices</span><span class="o">.</span><span class="n">GroverCommandLineArgument</span><span class="p">(</span><span class="n">runid_string</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">GroverStatsDisk</span><span class="p">(</span><span class="n">run</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;mean read ops </span><span class="si">%.2f</span><span class="s">&quot;</span><span class="o">%</span><span class="n">cmd</span><span class="o">.</span><span class="n">get_read_ops_stats</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span>
+    <span class="k">print</span> <span class="s">&quot;mean write ops </span><span class="si">%.2f</span><span class="s">&quot;</span><span class="o">%</span><span class="n">cmd</span><span class="o">.</span><span class="n">get_write_ops_stats</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span>
+    <span class="k">print</span> <span class="s">&quot;mean read lat </span><span class="si">%.2f</span><span class="s">&quot;</span><span class="o">%</span><span class="n">cmd</span><span class="o">.</span><span class="n">get_read_latency_stats</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span>
+    <span class="k">print</span> <span class="s">&quot;mean write lat </span><span class="si">%.2f</span><span class="s">&quot;</span><span class="o">%</span><span class="n">cmd</span><span class="o">.</span><span class="n">get_write_latency_stats</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span>
+    <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">GroverWebServices API .1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Bob Allegretti.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

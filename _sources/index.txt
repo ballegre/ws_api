@@ -1,0 +1,79 @@
+.. GroverWebServices API documentation master file, created by
+   sphinx-quickstart on Tue Mar  4 14:26:32 2014.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+#############################
+OPERA Performance Measurement
+#############################
+
+##################################################
+REG Lab GroverWebServices Python API Documentation
+##################################################
+
+:mod:`GroverWebServices` Module
+===============================
+
+.. automodule:: GroverWebServices
+
+   .. autoclass:: GroverCommandLineArgument
+      :members:
+
+   .. autoclass:: GroverResult()
+      :members: filer_name_list,runid,two_node,purpose,testname,workload,protocol,num_clients,sio_procs,run_notes,client_name_list,tload_list,perfant_user,results_dir,cluster_mode,ontap_version
+
+	.. automethod:: get_command_list
+
+	.. automethod:: get_runinfo
+
+	.. automethod:: get_num_load_points
+
+	.. automethod:: get_lp_id_list
+
+   .. autoclass:: GroverCommand()
+      :members:
+
+   .. _gws-api-ref:
+
+   Low Level Grover Web Services API
+   =================================
+
+   .. autoclass:: GroverGetTestInfo
+      :members:
+      :private-members:
+      :special-members:
+
+   .. autoclass:: GroverTestInfoRun()
+
+   .. autoclass:: GroverEventSearch()
+      :members:
+
+   .. autoclass:: GroverEventSearchResult
+
+
+:mod:`GroverStatsDisk` Module
+=============================
+
+.. automodule:: GroverStatsDisk
+
+   .. autoclass:: GroverStatsDisk
+      :members:
+      :inherited-members:
+
+   .. autoclass:: DiskStats
+      :members:
+
+Contents:
+
+.. toctree::
+   :maxdepth: 20
+
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

@@ -1,0 +1,1504 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>GroverWebServices &mdash; GroverWebServices API .1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="GroverWebServices API .1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">GroverWebServices API .1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for GroverWebServices</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">:mod:`GroverWebServices` is a python module defining class objects that model and provide access to PerfAnt performance testing results stored in Grover databases.</span>
+
+<span class="sd">The module provides two basic functional categories. The first, is :ref:`gws-api-ref` that directly models the Grover web services interface. The second is a value added service (this section) implementing high level abstractions to make accessing results more convenient.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pwd</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">HTMLParser</span>
+
+<span class="kn">import</span> <span class="nn">getoptslite</span> <span class="kn">as</span> <span class="nn">getopts</span>
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">site</span>
+<span class="n">site</span><span class="o">.</span><span class="n">addsitedir</span><span class="p">(</span><span class="s">&#39;/usr/software/test/projects/perf/aamp_runtime/vox/current/lib/python2.6/site-packages&#39;</span><span class="p">)</span>
+<span class="c"># site.addsitedir(&#39;/usr/software/test/projects/perf/aamp_runtime/prod/python2.6/site-packages&#39;)</span>
+<span class="kn">from</span> <span class="nn">aamp.grover</span> <span class="kn">import</span> <span class="n">WebService</span><span class="p">,</span> <span class="n">WebServiceException</span>
+<span class="kn">import</span> <span class="nn">common</span>
+
+<span class="c"># trap SIGPIPE</span>
+<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_DFL</span><span class="p">)</span>
+
+
+<span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span>
+
+<span class="n">SFS_TEST_NAME</span> <span class="o">=</span> <span class="s">&quot;sfs2008&quot;</span>
+<span class="n">SPC1_TEST_NAME</span> <span class="o">=</span> <span class="s">&quot;spc1&quot;</span>
+<span class="n">FIXED_RATE_RANDOM_READ</span> <span class="o">=</span> <span class="s">&quot;rndread_op_rate&quot;</span>
+<span class="n">FIXED_RATE_RANDOM_WRITE</span> <span class="o">=</span> <span class="s">&quot;rndwrite_op_rate&quot;</span>
+<span class="n">FIXED_RATE_SEQUENTIAL_READ</span> <span class="o">=</span> <span class="s">&quot;seqread_op_rate&quot;</span>
+<span class="n">FIXED_RATE_SEQUENTIAL_WRITE</span> <span class="o">=</span> <span class="s">&quot;seqwrite_op_rate&quot;</span>
+<span class="n">BEST_EFFORT_SEQUENTIAL_READ</span> <span class="o">=</span> <span class="s">&quot;aggread&quot;</span>
+<span class="n">BEST_EFFORT_SEQUENTIAL_WRITE</span> <span class="o">=</span> <span class="s">&quot;aggwrite&quot;</span>
+
+<span class="n">NFS_PROTOCOL</span> <span class="o">=</span> <span class="s">&quot;nfs&quot;</span>
+<span class="n">CIFS_PROTOCOL</span> <span class="o">=</span> <span class="s">&quot;cifs&quot;</span>
+<span class="n">ISCSI_PROTOCOL</span> <span class="o">=</span> <span class="s">&quot;iscsi&quot;</span>
+<span class="n">FCP_PROTOCOL</span> <span class="o">=</span> <span class="s">&quot;fcp&quot;</span>
+
+<span class="n">GROVER_LP_PEAK</span> <span class="o">=</span> <span class="s">&quot;peak&quot;</span>
+<span class="n">GROVER_LP_ALL</span> <span class="o">=</span> <span class="s">&quot;all&quot;</span>
+<span class="n">GROVER_LP_LAST</span> <span class="o">=</span> <span class="s">&quot;last&quot;</span>
+<span class="n">GROVER_LP_FIRST</span> <span class="o">=</span> <span class="s">&quot;first&quot;</span>
+<span class="n">GROVER_LP_GLOBAL</span> <span class="o">=</span> <span class="s">&quot;global&quot;</span>
+<span class="n">GROVER_LP_OFF_PEAK</span> <span class="o">=</span> <span class="s">&quot;peak-1&quot;</span>
+<span class="n">GROVER_SYMBOLIC_LP_LIST</span> <span class="o">=</span> <span class="p">[</span><span class="n">GROVER_LP_PEAK</span><span class="p">,</span><span class="n">GROVER_LP_ALL</span><span class="p">,</span><span class="n">GROVER_LP_LAST</span><span class="p">,</span><span class="n">GROVER_LP_FIRST</span><span class="p">,</span><span class="n">GROVER_LP_GLOBAL</span><span class="p">]</span>
+
+<span class="c"># &quot;Internal&quot; representation of the global lp. Use this when indexing into result dictionaries.</span>
+<span class="n">GROVER_LP_INT_GLOBAL</span> <span class="o">=</span> <span class="s">&quot;-1&quot;</span>
+
+
+<span class="n">GROVER_RTP_SITE</span> <span class="o">=</span> <span class="s">&quot;RTP&quot;</span>
+<span class="c"># guessing here</span>
+<span class="n">GROVER_SVL_SITE</span> <span class="o">=</span> <span class="s">&quot;SVL&quot;</span>
+
+<span class="n">GROVER_SITE</span> <span class="o">=</span> <span class="n">GROVER_RTP_SITE</span>
+
+<span class="k">def</span> <span class="nf">print_error</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+
+    <span class="kn">import</span> <span class="nn">traceback</span>
+
+    <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;ERROR: </span><span class="si">%s</span><span class="s"> line:</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">: &quot;</span><span class="o">%</span><span class="n">traceback</span><span class="o">.</span><span class="n">extract_stack</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="n">limit</span><span class="o">=</span><span class="mi">2</span><span class="p">)[</span><span class="mi">0</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span><span class="o">+</span><span class="n">msg</span>
+
+
+<span class="k">def</span> <span class="nf">print_xml</span><span class="p">(</span><span class="n">xmltree</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">xmltree</span><span class="p">,</span> <span class="n">pretty_print</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span>
+
+<span class="c">################################################################################</span>
+<span class="c">#</span>
+<span class="c"># elementTree xml and xpath helper functions</span>
+<span class="c">#</span>
+<span class="c">################################################################################</span>
+
+<span class="k">def</span> <span class="nf">_parse_grover_command_xml</span><span class="p">(</span><span class="n">url_obj</span><span class="p">):</span>
+
+    <span class="n">tree</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">url_obj</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="n">status</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s">&quot;status&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s">&quot;FAILURE&quot;</span><span class="p">:</span>
+        <span class="c"># print_error(_get_xml_value(tree, &quot;statusCode&quot;))</span>
+        <span class="c"># sys.exit(1)</span>
+        <span class="k">raise</span> <span class="n">GenError</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s">&quot;statusCode&quot;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">tree</span>
+
+<span class="k">def</span> <span class="nf">_get_xml_attribute</span><span class="p">(</span><span class="n">xmltree</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">attrib_name</span><span class="p">):</span>
+
+    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># web services store attributes in 2 different formats</span>
+    <span class="c"># below looks for &lt;Value&gt; tag</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">[@name=&#39;</span><span class="si">%s</span><span class="s">&#39;]/Value&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">attrib_name</span><span class="p">)</span>
+    <span class="c"># print query</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">xmltree</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="c"># print nodes</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;XML name/tag not unique&quot;</span><span class="p">)</span>
+
+    <span class="c"># Not in &lt;Value&gt; tag now look in text field</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">[@name=&#39;</span><span class="si">%s</span><span class="s">&#39;]&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">attrib_name</span><span class="p">)</span>
+        <span class="c"># print query</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="n">xmltree</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;XML name/tag not unique&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="k">def</span> <span class="nf">_get_xml_value</span><span class="p">(</span><span class="n">xmltree</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+
+    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># try to find tag text first</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">xmltree</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s">&quot;.//*&quot;</span><span class="o">+</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="c">#</span>
+    <span class="c"># if not in tag look in attributes</span>
+    <span class="c">#</span>
+
+    <span class="c"># web services store attributes in 2 different formats</span>
+    <span class="c"># below looks for &lt;Value&gt; tag</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="n">xmltree</span><span class="p">,</span> <span class="s">&quot;.//*&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="k">def</span> <span class="nf">_get_xml_nodes</span><span class="p">(</span><span class="n">xmltree</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="n">xmltree</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s">&quot;//*/</span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="n">name</span><span class="p">)</span>
+    <span class="c"># return xmltree.xpath(&quot;name&quot;)</span>
+
+<span class="c">################################################################################</span>
+
+<span class="k">def</span> <span class="nf">_isnum</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="c"># not numeric</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="c"># numeric</span>
+    <span class="k">return</span> <span class="bp">True</span>
+
+<span class="c">################################################################################</span>
+
+<span class="k">class</span> <span class="nc">GenError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    General purpose exception handler.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">pass</span>
+
+<span class="c">################################################################################</span>
+
+<div class="viewcode-block" id="GroverCommandLineArgument"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommandLineArgument">[docs]</a><span class="k">class</span> <span class="nc">GroverCommandLineArgument</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object class representing Grover run results at a specified load point. *runarg* is a string that takes the form ``runid[:lp_id|lp_index]``, where *runid* is Grover runid, *lp_id* is optional Grover loadpoint identifier (of the form *iter_loadpoint*, eg. 1_10000) **or** *lp_index* is optional numerical index (start=1). Special forms of **symbolic** load point specification are one of: ``&quot;all&quot;, &quot;peak&quot; or &quot;last&quot;``. If the optional load point is omitted then peak is assumed unless *peak_default=False*.</span>
+
+<span class="sd">    :note: SFS is a notable exception to the standard *lp_id* format.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        import GroverWebServices</span>
+<span class="sd">        run_iter = GroverWebServices.GroverCommandLineArgument(&quot;120330gav:peak&quot;)</span>
+<span class="sd">        run_iter = GroverWebServices.GroverCommandLineArgument(&quot;120330gav:5_22000&quot;)</span>
+<span class="sd">        run_iter = GroverWebServices.GroverCommandLineArgument(&quot;120330gav:5&quot;)</span>
+
+<span class="sd">    All the above create the same run object instance at the same load point.</span>
+
+<span class="sd">    Object instantiation does little more than syntax checking. Explicit invocation of additional methods are required to visit the Grover database and retrieve test parameters, results, and command output.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">class</span> <span class="nc">RunidFormatError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runarg</span><span class="p">,</span> <span class="n">peak_default</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Object attribute with runid portion of *runarg*&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Object atrribute with numeric index of load point (start=1)&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Object attribute with load point identifier part of *runarg*&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lp</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Object attribute holding load point part of *runarg*&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="s">&quot;Object attribute holding :class:`GroverResult` object, Must use :func:`get_result` to instantiate.&quot;</span>
+
+        <span class="n">runid</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="n">lp</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+        <span class="c"># split runid from load point specifier</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">runarg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">runid</span><span class="p">,</span> <span class="n">lp</span><span class="p">)</span> <span class="o">=</span> <span class="n">runarg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># parse alternative format eg. 120329gcd(3_9200)</span>
+            <span class="n">regex</span> <span class="o">=</span> <span class="s">&quot;(.*)\((.*)\)&quot;</span>
+            <span class="n">parsed</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span><span class="n">runarg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">parsed</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">runid</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">lp</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">runid</span> <span class="o">=</span> <span class="n">runarg</span>
+
+        <span class="c"># validate ,parse and save the runid portion</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_runid</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">RunId</span><span class="p">(</span><span class="n">runid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runid</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">RunidFormatError</span><span class="p">(</span><span class="s">&quot;Invalid runid specified: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">runid</span><span class="p">))</span>
+
+        <span class="c"># validate lp portion if present</span>
+        <span class="k">if</span> <span class="n">lp</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="ow">and</span> <span class="n">peak_default</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">GROVER_LP_PEAK</span>
+
+        <span class="k">if</span> <span class="n">lp</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">lp</span> <span class="ow">in</span> <span class="n">GROVER_SYMBOLIC_LP_LIST</span><span class="p">:</span>
+                <span class="c"># this is a symbolic lp id</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">=</span> <span class="n">lp</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c">#</span>
+                <span class="c"># not symbolic, check if lp is lp id or lp index</span>
+                <span class="c">#</span>
+
+                <span class="c"># lp indexes have a max of 2 digits. if there&#39;s ever</span>
+                <span class="c"># an SFS id of 2 digits we&#39;re screwed</span>
+                <span class="n">regex</span> <span class="o">=</span> <span class="s">&quot;[0-9]{1,2}$&quot;</span>
+                <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span> <span class="n">lp</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c"># not an index must be an id. SFS is a special</span>
+                    <span class="c"># case (no underbar)</span>
+                    <span class="n">regex</span> <span class="o">=</span> <span class="s">&quot;[0-9]+_[0-9]+$&quot;</span>
+                    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span> <span class="n">lp</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">=</span> <span class="n">lp</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c"># no underbar present must be SFS lp id</span>
+                        <span class="k">if</span> <span class="n">_isnum</span><span class="p">(</span><span class="n">lp</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">=</span> <span class="n">lp</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span> <span class="o">==</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">==</span> <span class="bp">None</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">RunidFormatError</span><span class="p">(</span><span class="s">&quot;Invalid load point specified: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span>
+
+    <span class="k">def</span> <span class="nf">get_lp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">lp</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_index</span>
+
+        <span class="k">return</span> <span class="n">lp</span>
+
+    <span class="k">def</span> <span class="nf">doprint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid</span>
+        <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp</span><span class="p">()</span>
+
+<div class="viewcode-block" id="GroverCommandLineArgument.get_result"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommandLineArgument.get_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method to retrieve test results from Grover.</span>
+<span class="sd">        </span>
+<span class="sd">        :return:  :class:`GroverResult` object.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">GroverResult</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span>
+</div>
+<div class="viewcode-block" id="GroverCommandLineArgument.get_command"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommandLineArgument.get_command">[docs]</a>    <span class="k">def</span> <span class="nf">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method to retrieve :class:`GroverCommand` object.</span>
+
+<span class="sd">        :param cmd: String with Grover command as it appears in ``output`` output file in results. Thus prior knowledge of commands collected is required. For a list of commands at a given load point use :func:`GroverResult.get_command_list`.</span>
+<span class="sd">        :return: :class:`GroverCommand` object</span>
+
+<span class="sd">        Example::</span>
+<span class="sd">        </span>
+<span class="sd">           ifstat = run_iter.get_command(&quot;ifstat -a -v results AFTER the measurement&quot;)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">GroverCommand</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">,</span> <span class="n">cmd</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">vol_latency_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">counter</span><span class="o">=</span><span class="s">&quot;avg_latency&quot;</span><span class="p">):</span>
+        <span class="c"># resolves a circular import problem</span>
+        <span class="kn">import</span> <span class="nn">GroverStatsCommand</span>
+
+        <span class="n">stats_vol</span> <span class="o">=</span> <span class="n">GroverStatsCommand</span><span class="o">.</span><span class="n">GroverStatsCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&quot;stats volume&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stats_vol</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">master_run</span><span class="p">:</span>
+            <span class="n">node_name</span> <span class="o">=</span> <span class="n">stats_vol</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">filer_name_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">node_name</span> <span class="o">=</span> <span class="n">stats_vol</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">filer_name_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&quot;volume:</span><span class="si">%s</span><span class="s">_vol\d+:</span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span><span class="n">counter</span><span class="p">))</span>
+        <span class="n">vol_lat_list</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">stats_vol</span><span class="o">.</span><span class="n">output</span><span class="p">())</span>
+        <span class="n">lat_value_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">vol_lat</span> <span class="ow">in</span> <span class="n">vol_lat_list</span><span class="p">:</span>
+            <span class="n">obj_name</span><span class="p">,</span><span class="n">instance</span><span class="p">,</span><span class="n">counter_name</span> <span class="o">=</span> <span class="n">vol_lat</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+            <span class="n">lat</span><span class="p">,</span><span class="n">unit</span> <span class="o">=</span> <span class="n">stats_vol</span><span class="o">.</span><span class="n">get_counter_stat</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span><span class="n">counter_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lat</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># print &quot;%s:%s:%s: %s %s&quot;%(obj_name,instance,counter_name,lat,unit)</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># print &quot;%s:%s:%s: %.2f %s&quot;%(obj_name,instance,counter_name,lat,unit)</span>
+                <span class="n">lat_value_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">lat_value_list</span>
+
+<span class="c">################################################################################</span>
+</div>
+<div class="viewcode-block" id="GroverCommand"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommand">[docs]</a><span class="k">class</span> <span class="nc">GroverCommand</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object base class to access and represent command output captured during a test run linked to a parent :class:`GroverResult` class.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># When accessing GroverResult command output a load point specifier</span>
+    <span class="c"># is required. A load point specifier can be one of three forms:</span>
+    <span class="c"># load point identifier (lp_id), load point index (int) or symbolic</span>
+    <span class="c"># identifier. index is an integer that simply represents the load</span>
+    <span class="c"># point in sequence starting at 1. Internally, Grover will assign a</span>
+    <span class="c"># load point identifier that varies between different types of</span>
+    <span class="c"># tests.</span>
+
+    <span class="k">class</span> <span class="nc">CommandError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">class</span> <span class="nc">NoCommandError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent_result</span><span class="p">,</span> <span class="n">lp</span><span class="p">,</span> <span class="n">grover_cmd_pattern</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">parent_result</span>
+        <span class="sd">&quot;&quot;&quot;Attribute holding parent result object&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">no_xml</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="sd">&quot;&quot;&quot;Attribute indicating that no xml form of command available from grover&quot;&quot;&quot;</span>
+
+        <span class="p">(</span><span class="n">lp_id</span><span class="p">,</span> <span class="n">lp_index</span><span class="p">)</span> <span class="o">=</span> <span class="n">parent_result</span><span class="o">.</span><span class="n">_disambiguate_lp</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+
+        <span class="c">#</span>
+        <span class="c"># find a matching grover command</span>
+        <span class="c">#</span>
+        <span class="c"># first check for an exact match</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">grover_cmd_pattern</span><span class="o">+</span><span class="s">&quot;$&quot;</span><span class="p">)</span>
+        <span class="n">cmd_match</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">expr</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">parent_result</span><span class="o">.</span><span class="n">get_command_list_by_lp_id</span><span class="p">(</span><span class="n">lp_id</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd_match</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c"># check pattern and command uniqueness</span>
+            <span class="n">expr</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">grover_cmd_pattern</span><span class="p">)</span>
+            <span class="n">cmd_match</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">expr</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">parent_result</span><span class="o">.</span><span class="n">get_command_list</span><span class="p">(</span><span class="n">lp_index</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd_match</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">CommandError</span><span class="p">(</span><span class="s">&quot;Command not unique </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="o">%</span><span class="n">grover_cmd_pattern</span><span class="p">)</span>
+                <span class="c"># print_error(&quot;Command not unique \&quot;%s\&quot;&quot;%grover_cmd_pattern)</span>
+                <span class="c"># sys.exit(1)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd_match</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">NoCommandError</span><span class="p">(</span><span class="s">&quot;No such command found </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="o">%</span><span class="n">grover_cmd_pattern</span><span class="p">)</span>
+                <span class="c"># print_error(&quot;No such command found \&quot;%s\&quot;&quot;%grover_cmd_pattern)</span>
+                <span class="c"># sys.exit(1)</span>
+
+        <span class="c"># dereference (flatten) list and make it a string</span>
+        <span class="n">cmd_match</span> <span class="o">=</span> <span class="n">cmd_match</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;getCommandXML&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="n">parent_result</span><span class="o">.</span><span class="n">runid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">command</span> <span class="o">=</span> <span class="n">cmd_match</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">iterationid</span> <span class="o">=</span> <span class="n">lp_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">observationid</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
+        <span class="k">if</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_INT_GLOBAL</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">observationid</span> <span class="o">=</span> <span class="s">&#39;-1&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lxml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;getCommandText&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="n">parent_result</span><span class="o">.</span><span class="n">runid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="o">.</span><span class="n">command</span> <span class="o">=</span> <span class="n">cmd_match</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="o">.</span><span class="n">iterationid</span> <span class="o">=</span> <span class="n">lp_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="o">.</span><span class="n">observationid</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
+        <span class="k">if</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_INT_GLOBAL</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="o">.</span><span class="n">observationid</span> <span class="o">=</span> <span class="s">&#39;-1&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_txt_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_txt_command_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_lxml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_txt_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+
+        <span class="c"># convert html encoded characters</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">HTMLParser</span><span class="o">.</span><span class="n">HTMLParser</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">command_text_output</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">unescape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">text_lxml</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s">&quot;*/MessageBody&quot;</span><span class="p">))</span>
+
+        <span class="c"># update the result object database with this command</span>
+        <span class="n">parent_result</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">][</span><span class="n">cmd_match</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">parent_result</span><span class="o">.</span><span class="n">command</span><span class="p">[</span><span class="n">cmd_match</span><span class="p">][</span><span class="n">lp_id</span><span class="p">]</span>  <span class="o">=</span> <span class="bp">self</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xpath_query</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_xml</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lxml</span><span class="p">,</span> <span class="n">xpath_query</span><span class="p">)</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">grep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regexp</span><span class="p">):</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">regexp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">expr</span><span class="o">.</span><span class="n">search</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">get_text_output</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)))</span>
+
+    <span class="c">################################################################################</span>
+<div class="viewcode-block" id="GroverCommand.get_text_output"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommand.get_text_output">[docs]</a>    <span class="k">def</span> <span class="nf">get_text_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Method returning text output of command.</span>
+<span class="sd">        </span>
+<span class="sd">        :return: Command output text string.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_text_output</span>
+
+    <span class="c">################################################################################</span></div>
+<div class="viewcode-block" id="GroverCommand.get_xml_output"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverCommand.get_xml_output">[docs]</a>    <span class="k">def</span> <span class="nf">get_xml_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Method returning XML text of command output.</span>
+<span class="sd">        </span>
+<span class="sd">        :return: XML representation of command text string.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lxml</span><span class="p">)</span>
+
+<span class="c">################################################################################</span></div></div>
+<span class="k">class</span> <span class="nc">GroverRunidSearch</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">userid</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">date_from</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">date_to</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">purpose</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">codeline</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">Search</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<span class="c">################################################################################</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<span class="k">def</span> <span class="nf">result_singleton</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="c"># This little gem, applied as a decorator, ensures that the user</span>
+    <span class="c"># doesn&#39;t make mutliple calls for the same run result. Took me a</span>
+    <span class="c"># while to figure this out and will proabably take you too.</span>
+    <span class="n">instances</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="c"># this forces the inheritance of the doc string for sphinx</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+    <span class="c">##############################################################################</span>
+    <span class="k">def</span> <span class="nf">getinstance</span><span class="p">(</span><span class="n">runid</span><span class="p">,</span><span class="n">user</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">runid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">instances</span><span class="p">:</span>
+            <span class="n">instances</span><span class="p">[</span><span class="n">runid</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">runid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">runid</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">getinstance</span>
+
+<span class="nd">@result_singleton</span>
+<div class="viewcode-block" id="GroverResult"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverResult">[docs]</a><span class="k">class</span> <span class="nc">GroverResult</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    An object class representing a grover run result identifed by runid, eg.::</span>
+
+<span class="sd">       result = GroverResult(&#39;112233abc&#39;)</span>
+
+<span class="sd">    :class:`GroverResult` objects contain test parameters and overall test results for a performance test run under PerfAnt. The :class:`GroverResult` object is an abstraction containing globally significant test information such as settings, overrides, load points and, lists of commands collected at each load point.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># :todo: Add Settings and Overrides class objects.</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runid</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()):</span>
+
+        <span class="c"># check runid format</span>
+        <span class="n">run</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">RunId</span><span class="p">(</span><span class="n">runid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">value</span>
+        <span class="sd">&quot;&quot;&quot; The runid of this test result.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">user</span> <span class="o">==</span> <span class="s">&#39;auto_script&#39;</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_calling_user</span> <span class="o">=</span> <span class="n">pwd</span><span class="o">.</span><span class="n">getpwuid</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getuid</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">GenError</span><span class="p">(</span><span class="s">&quot;os.getlogin() failed getting user id&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># caller explicitly defines user</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_calling_user</span> <span class="o">=</span> <span class="n">user</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_commands_fetched</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="sd">&quot;&quot;&quot;State of command fetching&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;getCommandXML&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="n">runid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">command</span> <span class="o">=</span> <span class="s">&quot;expect&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">iterationid</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="o">.</span><span class="n">observationid</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
+        <span class="c"># try:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_xml_command_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+
+        <span class="c"># self._txt_command_service = self._url_handle.get_service(&#39;getCommandText&#39;)</span>
+
+        <span class="c"># self._txt_command_service.runid = runid</span>
+        <span class="c"># self._txt_command_service.command = &quot;expect&quot;</span>
+        <span class="c"># self._txt_command_service.iterationid = &#39;0&#39;</span>
+        <span class="c"># self._txt_command_service.observationid = &#39;0&#39;</span>
+        <span class="c"># # try:</span>
+        <span class="c"># self._ws_txt_result = self._url_handle.call_service(self._txt_command_service)</span>
+        <span class="c"># # except WebServiceException:</span>
+        <span class="c"># self.text_lxml = self._ws_txt_result.get_tree()</span>
+
+        <span class="c"># self.command_text_output = self.text_lxml.findtext(&quot;*/MessageBody&quot;)</span>
+
+
+        <span class="c"># BIG TODO: Need to CLEARLY differentiate between results and settings. And among</span>
+        <span class="c"># settings differentiate between overrides and defaults. This may entail (1) defining a</span>
+        <span class="c"># settings subclass and creating instances for each filer associated with a test result</span>
+        <span class="c"># and (2) saving the overridden settings in a different container than default settings</span>
+        <span class="c"># (i.e. subclass the settings subclass). This, to me, is cleaner than using the silly</span>
+        <span class="c"># m1 and m2 suffixes that perfant uses.</span>
+
+        <span class="c"># Everything below is a test setting and will eventually have to be changed to</span>
+        <span class="c"># accomodate 2 node tests which will break existing applications. May consider handling</span>
+        <span class="c"># single node tests differently than dual node to maintain backward compatibility.</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;runids&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">master_run</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">runid</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="c"># double check cuz I don&#39;t trust grover</span>
+            <span class="k">if</span> <span class="n">runid</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">master_run</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filer_name_list</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;Filer_list&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)</span>
+        <span class="s">&quot;List of filer names associated with this test&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">two_node</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="s">&quot;Set to True if this is a two node test otherwise False&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filer_name_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">two_node</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">filer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">filer_name_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filer_overrides</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filer_defaults</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filer_overrides</span><span class="p">[</span><span class="n">filer</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filer_defaults</span><span class="p">[</span><span class="n">filer</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># todo: overrides treated differently than defaults</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">purpose</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;purpose&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Test purpose string&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">testname</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span><span class="s">&quot;testname&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Alias for workload&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workload</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span><span class="s">&quot;testname&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Test workload name&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">protocol</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span><span class="s">&quot;protocol&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Test protocol&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iosize</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;iosize&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_clients</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;num_clients&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Number of clients&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sio_procs</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;sio_procs&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Number of sio procs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_notes</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;run_notes&quot;</span><span class="p">)</span>
+        <span class="s">&quot;Test run notes&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_name_list</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;Client_list&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="s">&quot;List of client names&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tload_list</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;tload&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="s">&quot;test tload parameter (i.e. defined load points)&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_m1</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;.//*/Override/Parameter&quot;</span><span class="p">,</span> <span class="s">&quot;build:m1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_m2</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;.//*/Override/Parameter&quot;</span><span class="p">,</span> <span class="s">&quot;build:m2&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">perfant_user</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;.//*/Override/Parameter&quot;</span><span class="p">,</span> <span class="s">&quot;user:t&quot;</span><span class="p">)</span>
+        <span class="s">&quot;User identifier test ran under&quot;</span>
+        <span class="c">#</span>
+        <span class="c"># Need more time to learn xpath so this is the best I can do now</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_header</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_root</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_root</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_body</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_type_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_type</span><span class="o">.</span><span class="n">text</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_body</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c">#</span>
+        <span class="c"># These are the major nodes in the expect xml</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_override</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_filer1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c"># 2-node specific</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_node</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_filer2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pair_peak_ops</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">pair_peak_bps</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_node_peak</span><span class="p">()</span>
+        <span class="c">#</span>
+        <span class="c"># # &lt;test/Parameter&gt; there&#39;s one of these for each fucking test parameter?</span>
+        <span class="c"># self.expect_message_body_command_test_parameter1 = self.expect_message_body_command_test[0]</span>
+        <span class="c"># self.expect_message_body_command_test_parameter1_name = self.expect_message_body_command_test_parameter1.attrib[&#39;name&#39;]</span>
+        <span class="c"># self.expect_message_body_command_test_parameter1_value = self.expect_message_body_command_test_parameter1.findtext(&quot;Value&quot;)</span>
+        <span class="c"># #</span>
+        <span class="c"># # this creates a dictionarty of name/value pairs</span>
+        <span class="c"># self.expect_message_body_command_filer1_attributes = self.expect_message_body_command_filer1.attrib</span>
+        <span class="c"># self.expect_message_body_command_filer2_attributes = self.expect_message_body_command_filer2.attrib</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">workdir</span> <span class="o">=</span>  <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_filer1</span><span class="p">,</span> <span class="s">&quot;workdir&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workdir</span><span class="o">+</span><span class="s">&quot;/&quot;</span><span class="o">+</span><span class="n">runid</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="s">&quot;/&quot;</span><span class="o">+</span><span class="n">runid</span>
+        <span class="s">&quot;Test results directory&quot;</span>
+
+        <span class="n">ok_options_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s">&quot;.//*/Override/Parameter[@name=&#39;ok_options:m1&#39;]&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ok_options_list</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ok_options_string</span> <span class="o">=</span> <span class="n">ok_options_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ok_options_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s">&quot;.//*/Parameter[@name=&#39;ok_options&#39;]/Value&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ok_options_string</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_mode</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_filer1</span><span class="p">,</span><span class="s">&quot;.//*&quot;</span><span class="p">,</span><span class="s">&quot;cluster_mode&quot;</span><span class="p">)</span>
+        <span class="c"># convert to boolean</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_mode</span> <span class="o">==</span> <span class="s">&#39;true&#39;</span>
+        <span class="s">&quot;Set to ``True`` if Cmode test&quot;</span>
+        <span class="c"># parse out ontap version from build</span>
+        <span class="k">class</span> <span class="nc">Dummy</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ontap_version</span> <span class="o">=</span> <span class="n">Dummy</span><span class="p">()</span>
+        <span class="s">&quot;Build tag of Ontap. Set to &#39;``Private Build``&#39; if private build.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ontap_version</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="s">&quot;Private Build&quot;</span>
+        <span class="n">tokes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_m1</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokes</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ontap_version</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c"># assumes nics are the same on both filers in 2-node results</span>
+        <span class="c"># TODO: don&#39;t make this assumption</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_mode</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nics</span> <span class="o">=</span> <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_message_body_command_filer1</span><span class="p">,</span><span class="s">&quot;.//*&quot;</span><span class="p">,</span><span class="s">&quot;nics&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_nics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nics</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_nics</span> <span class="o">=</span> \
+                <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;.//*/Filer[@number=1]/Parameter&quot;</span><span class="p">,</span> <span class="s">&quot;data_nics&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_nics</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_nics</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">cluster_nics</span> <span class="o">=</span> \
+                <span class="n">_get_xml_attribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expect_lxml</span><span class="p">,</span> <span class="s">&quot;.//*/Filer[@number=1]/Parameter&quot;</span><span class="p">,</span> <span class="s">&quot;cluster_nics&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_nics</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cluster_nics</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fetch_commands</span><span class="p">()</span>
+
+    <span class="k">class</span> <span class="nc">LpIndexError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">class</span> <span class="nc">LpIdError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">class</span> <span class="nc">Settings</span><span class="p">():</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">parent</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">attrib_name</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">attrib_name</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_disambiguate_lp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Load points are a problem becasue of SFS. We want the flexibility to use lp numbers</span>
+<span class="sd">        (indexes), lp ids and symbolic names to reference load points. It&#39;s difficult to</span>
+<span class="sd">        differentiate between an lp index and an SFS lp id. They are both integers.</span>
+
+<span class="sd">        There are some helper defs appearing below that implement one method of disambiguating an lp</span>
+<span class="sd">        index from an SFS lp id.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="p">(</span><span class="n">lp_id</span><span class="p">,</span><span class="n">lp_index</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_lp_index</span><span class="p">(</span><span class="n">lp</span><span class="p">):</span>
+            <span class="n">lp_index</span> <span class="o">=</span> <span class="n">lp</span>
+            <span class="n">lp_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_index2lp_id</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_lp_id</span><span class="p">(</span><span class="n">lp</span><span class="p">):</span>
+            <span class="n">lp_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_sym2lp_id</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+            <span class="n">lp_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id2lp_index</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># dont think this can be reached</span>
+            <span class="k">raise</span> <span class="n">GroverCommandLineArgument</span><span class="o">.</span><span class="n">RunidFormatError</span><span class="p">(</span><span class="s">&quot;Invalid load point specified: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">lp_id</span><span class="p">,</span><span class="n">lp_index</span><span class="p">)</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">_is_lp_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lp</span><span class="p">):</span>
+
+        <span class="n">rval</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">lp</span> <span class="o">==</span> <span class="n">GROVER_LP_GLOBAL</span><span class="p">:</span>
+            <span class="n">rval</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_isnum</span><span class="p">(</span><span class="n">lp</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">rval</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">testname</span> <span class="o">==</span> <span class="n">SFS_TEST_NAME</span><span class="p">:</span>
+                    <span class="n">num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">num</span> <span class="o">&gt;</span> <span class="mi">99</span><span class="p">:</span>
+                        <span class="n">rval</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">rval</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="n">rval</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">_is_lp_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lp</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_lp_id</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">get_overrides</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c"># List of tuples returned to caller = (name,value) ordered pairs. Note I very wisely</span>
+        <span class="c"># avoided using xml and xpath because it&#39;s a PITA.</span>
+        <span class="n">overrides</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c"># check if we need to initialize commands for this result</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_commands_fetched</span> <span class="o">!=</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch_commands</span><span class="p">()</span>
+        <span class="c">#</span>
+        <span class="c"># Get an expect command. If we alread have one use it. Otherwise fetch from grover.</span>
+        <span class="n">expect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">[</span><span class="s">&quot;expect&quot;</span><span class="p">][</span><span class="n">GROVER_LP_INT_GLOBAL</span><span class="p">]</span>
+        <span class="c"># for lp in self.get_lp_id_list()[1:]:</span>
+        <span class="c">#     if self.command[&quot;expect&quot;][lp] != None:</span>
+        <span class="c">#         # found an exiting expect command</span>
+        <span class="c">#         expect = self.command[&quot;expect&quot;][lp]</span>
+        <span class="c">#         break</span>
+        <span class="k">if</span> <span class="n">expect</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># fetch an expect command from grover</span>
+            <span class="n">expect</span> <span class="o">=</span> <span class="n">GroverCommand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">GROVER_LP_GLOBAL</span><span class="p">,</span><span class="s">&quot;expect&quot;</span><span class="p">)</span>
+        <span class="c"># filter out comments</span>
+        <span class="n">comments</span> <span class="o">=</span> <span class="n">expect</span><span class="o">.</span><span class="n">grep</span><span class="p">(</span><span class="s">&quot;^#&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">comments</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">):</span>
+            <span class="n">param</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&#39;#\s+(.*?)=(.*)&#39;</span><span class="p">,</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">param</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># add a tuple to the list</span>
+                <span class="n">overrides</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">param</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="n">param</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="n">overrides</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">display</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">purpose</span>
+
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">lp_index2lp_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp_index</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_lp_index</span><span class="p">(</span><span class="n">lp_index</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">LpIndexError</span><span class="p">(</span><span class="s">&quot;Invalid lp index </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp_index</span><span class="p">))</span>
+
+        <span class="n">lp</span> <span class="o">=</span> <span class="n">lp_index</span>
+
+        <span class="c"># Users shouldn&#39;t be passing in symbolic lp names as lp indexes but we&#39;ll allow it for</span>
+        <span class="c"># now. lp_index should strictly be a numeric offset into load point list to accomdate a</span>
+        <span class="c"># translation to lp id. Could handle this by raising an exception if the lp_index</span>
+        <span class="c"># passed in is not numeric and, in the case of SFS, one of the load points in</span>
+        <span class="c"># tload_list.</span>
+        <span class="k">if</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_PEAK</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span>
+        <span class="k">elif</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_LAST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_FIRST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_GLOBAL</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">GROVER_LP_INT_GLOBAL</span>
+        <span class="k">elif</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_INT_GLOBAL</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="n">lp_index</span> <span class="o">==</span> <span class="n">GROVER_LP_ALL</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">testname</span> <span class="o">==</span> <span class="n">SFS_TEST_NAME</span><span class="p">:</span>
+            <span class="c"># lets hope sfs never has a load point lower than 100 ops</span>
+            <span class="k">if</span> <span class="n">lp_index</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="c"># It already is an lp id. There&#39;s no easy handed way to stop a user from</span>
+                <span class="c"># calling this method passing in an sfs lp id which is a number (this is not</span>
+                <span class="c"># the case for all other workloads). The best we can do is nothing and simply</span>
+                <span class="c"># return to caller what they sent in.</span>
+                <span class="n">lp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tload_list</span><span class="p">[</span><span class="n">lp_index</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp_index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tload_list</span><span class="p">[</span><span class="n">lp_index</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c"># Should the id be typed to str?</span>
+        <span class="k">return</span> <span class="n">lp</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">lp_id2lp_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp_id</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_lp_id</span><span class="p">(</span><span class="n">lp_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">LpIdError</span><span class="p">(</span><span class="s">&quot;Invalid lp index </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp_id</span><span class="p">))</span>
+
+        <span class="n">lp</span> <span class="o">=</span> <span class="n">lp_id</span>
+
+        <span class="k">if</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_PEAK</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_index</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_LAST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">())</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_FIRST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_ALL</span><span class="p">:</span>
+            <span class="c"># caller cannot use symbolic &#39;all&#39; lp. they must intercept this and call iteratively using lp list.</span>
+            <span class="k">raise</span> <span class="n">GroverCommandLineArgument</span><span class="o">.</span><span class="n">RunidFormatError</span><span class="p">(</span><span class="s">&quot;Invalid load point specified: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">lp_id</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_GLOBAL</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">GROVER_LP_INT_GLOBAL</span>
+<span class="c">#        elif self.testname == SFS_TEST_NAME:</span>
+<span class="c">#            pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># Assuming there&#39;s always a &quot;-1&quot; lp id from grover. If</span>
+                <span class="c"># there is not a &quot;-1&quot; lp id then the index count will</span>
+                <span class="c"># start from zero and we need to increment.</span>
+                <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">lp_id</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+                <span class="c"># raise GroverCommandLineArgument.RunidFormatError(&quot;Invalid load point specified: %s&quot;%(lp_id))</span>
+
+        <span class="k">return</span> <span class="n">lp</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">lp_sym2lp_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp_id</span><span class="p">):</span>
+
+        <span class="n">lp</span> <span class="o">=</span> <span class="n">lp_id</span>
+
+        <span class="k">if</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_PEAK</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_ALL</span><span class="p">:</span>
+            <span class="c"># this is trouble</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">LpIdError</span><span class="p">(</span><span class="s">&quot;Not expecting lp all&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_LAST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span><span class="n">GROVER_LP_FIRST</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lp_id_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_GLOBAL</span><span class="p">:</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">GROVER_LP_INT_GLOBAL</span>
+        <span class="k">elif</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_OFF_PEAK</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="n">lp</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">get_command_list_by_lp_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp_id</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_commands_fetched</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="n">print_error</span><span class="p">(</span><span class="s">&quot;Must issue command_fetch() first.&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">lp_id</span> <span class="o">==</span> <span class="n">GROVER_LP_GLOBAL</span><span class="p">:</span>
+            <span class="n">lp_id</span> <span class="o">=</span> <span class="n">GROVER_LP_INT_GLOBAL</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="c">################################################################################</span>
+<div class="viewcode-block" id="GroverResult.get_command_list"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverResult.get_command_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_command_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a list of commands for the specified load point. Argument *lp* can take on any of the possible forms of load point specifier as documented in :class:`GroverCommandLineArgument`.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        
+        <span class="p">(</span><span class="n">lp_id</span><span class="p">,</span> <span class="n">lp_index</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disambiguate_lp</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="c">################################################################################</span></div>
+    <span class="k">def</span> <span class="nf">display_runinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        print out an assortment of global runid information</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_runinfo</span><span class="p">()</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">print_runinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_runinfo</span><span class="p">()</span>
+
+    <span class="c">################################################################################</span>
+<div class="viewcode-block" id="GroverResult.get_runinfo"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverResult.get_runinfo">[docs]</a>    <span class="k">def</span> <span class="nf">get_runinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Convenience method that returns a string with runid, purpose, Ontap version, and test status code.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s"> with </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ontap_version</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_failed</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">: FAILED: </span><span class="si">%s</span><span class="s"> with </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">purpose</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ontap_version</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">info</span> <span class="o">+=</span> <span class="s">&quot; ERROR_CODE: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">failure_code</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">info</span>
+
+    <span class="c">################################################################################</span></div>
+<div class="viewcode-block" id="GroverResult.get_num_load_points"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverResult.get_num_load_points">[docs]</a>    <span class="k">def</span> <span class="nf">get_num_load_points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the number of test iterations executed.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="c">################################################################################</span></div>
+<div class="viewcode-block" id="GroverResult.get_lp_id_list"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverResult.get_lp_id_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_lp_id_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns list of test iterations executed load point identifiers.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id_list</span>
+
+    <span class="c">################################################################################</span></div>
+    <span class="k">def</span> <span class="nf">get_commands_in_lp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lp_index</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">get_command_foreach_lp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command_index</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">class</span> <span class="nc">Config</span><span class="p">():</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">result</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="c">################################################################################</span>
+    <span class="k">def</span> <span class="nf">fetch_commands</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Fetches the commands issued during test run at all load points. Note this is simply the</span>
+<span class="sd">        commands and not the command output. Builds dictionaries to cross-reference multiple grover</span>
+<span class="sd">        commands by load point or a single command by multilpe load points. output GroverCommand</span>
+<span class="sd">        object issued and recorded during test run. The commands are stored in GroverResult object</span>
+<span class="sd">        attributes organized by load points and by command. For example:</span>
+
+<span class="sd">            result.lp[&#39;1_10&#39;][&#39;statit&#39;] = None</span>
+<span class="sd">            result.command[&#39;statit&#39;][&#39;1_10&#39;] = None</span>
+
+<span class="sd">        The above dictionaries, keyed by command text and load point iteration ID, holds a reference</span>
+<span class="sd">        to the same GroverCommand object containing information for statit command at load point</span>
+<span class="sd">        1_10.  Primative methods are provided to retrieve xml or raw text from the command output.</span>
+
+<span class="sd">        Command output, stored in text and xml formats, is accessed from 2 different perspectives:</span>
+<span class="sd">        (1) by load point where applications access all commands within a given load point; and (2)</span>
+<span class="sd">        by command, applications access a single command across all load points. For example:</span>
+
+<span class="sd">        Access by load point:</span>
+
+<span class="sd">            result.lp[&#39;1_1&#39;][&#39;statit&#39;]</span>
+<span class="sd">            result.lp[&#39;1_1&#39;][&#39;wafl_susp -w&#39;]</span>
+<span class="sd">            result.lp[&#39;1_1&#39;][&#39;wafl cpstats results AFTER the measurement&#39;]</span>
+
+<span class="sd">            {&#39;1_1&#39;: { &#39;statit&#39;: None } \</span>
+<span class="sd">                    { &#39;wafl_susp -w&#39;: None } \</span>
+<span class="sd">                    { &#39;wafl cpstats results AFTER the measurement&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">            result.lp[&#39;2_10&#39;][&#39;statit&#39;]</span>
+<span class="sd">            result.lp[&#39;2_10&#39;][&#39;wafl_susp -w&#39;]</span>
+<span class="sd">            result.lp[&#39;2_10&#39;][&#39;wafl cpstats results AFTER the measurement&#39;]</span>
+
+<span class="sd">            {&#39;2_10&#39;: { &#39;statit&#39;: None } \</span>
+<span class="sd">                     { &#39;wafl_susp -w&#39;: None } \</span>
+<span class="sd">                     { &#39;wafl cpstats results AFTER the measurement&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">            result.lp[&#39;3_20&#39;][&#39;statit&#39;]</span>
+<span class="sd">            result.lp[&#39;3_20&#39;][&#39;wafl_susp -w&#39;]</span>
+<span class="sd">            result.lp[&#39;3_20&#39;][&#39;wafl cpstats results AFTER the measurement&#39;]</span>
+
+<span class="sd">            {&#39;3_20&#39;: { &#39;statit&#39;: None } \</span>
+<span class="sd">                     { &#39;wafl_susp -w&#39;: None } \</span>
+<span class="sd">                     { &#39;wafl cpstats results AFTER the measurement&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">        Access by command:</span>
+
+<span class="sd">            result.command[&#39;statit&#39;][&#39;1_1&#39;]</span>
+<span class="sd">            result.command[&#39;statit&#39;][&#39;2_10&#39;]</span>
+<span class="sd">            result.command[&#39;statit&#39;][&#39;3_20&#39;]</span>
+
+<span class="sd">            {&#39;statit&#39;: { &#39;1_1&#39;: None } \</span>
+<span class="sd">                       { &#39;2_10&#39;: None } \</span>
+<span class="sd">                       { &#39;3_20&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">            result.command[&#39;wafl_susp -w&#39;][&#39;1_1&#39;]</span>
+<span class="sd">            result.command[&#39;wafl_susp -w&#39;][&#39;2_10&#39;]</span>
+<span class="sd">            result.command[&#39;wafl_susp -w&#39;][&#39;3_20&#39;]</span>
+
+<span class="sd">            {&#39;wafl_susp -w&#39;: { &#39;1_1&#39;: None } \</span>
+<span class="sd">                             { &#39;2_10&#39;: None } \</span>
+<span class="sd">                             { &#39;3_20&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">            result.command[&#39;wafl cpstats results AFTER the measurement&#39;][&#39;1_1&#39;]</span>
+<span class="sd">            result.command[&#39;wafl cpstats results AFTER the measurement&#39;][&#39;2_10&#39;]</span>
+<span class="sd">            result.command[&#39;wafl cpstats results AFTER the measurement&#39;][&#39;3_20&#39;]</span>
+
+<span class="sd">            {&#39;wafl cpstats results AFTER the measurement&#39;: \</span>
+<span class="sd">                             { &#39;1_1&#39;: None } \</span>
+<span class="sd">                             { &#39;2_10&#39;: None } \</span>
+<span class="sd">                             { &#39;3_20&#39;: None } \</span>
+<span class="sd">            }</span>
+
+<span class="sd">        Each of the above attribute dictionaries (lp and command)</span>
+<span class="sd">        reference a generic GroverCommand object initialized to None.</span>
+
+<span class="sd">        Accessing command object:</span>
+
+<span class="sd">          command = result.lp[&#39;1_1&#39;,&#39;statit&#39;]</span>
+<span class="sd">          command = results.command[&#39;statit&#39;][&#39;1_1&#39;]</span>
+<span class="sd">          command = result.get_command(&quot;statit&quot;, 1)</span>
+
+<span class="sd">        Retrieving command output:</span>
+
+<span class="sd">          command.get_xml()</span>
+<span class="sd">          command.xml_query(xpath_query)</span>
+<span class="sd">          command.get_text()</span>
+<span class="sd">          command.regex(exp)</span>
+
+<span class="sd">        Iterate over commands within a load point:</span>
+
+<span class="sd">          result.get_commands_in_lp(lp_index)</span>
+
+<span class="sd">        Iterate over commands across all load points:</span>
+
+<span class="sd">          result.get_command_by_lps(&#39;statit&#39;)</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_commands_fetched</span> <span class="o">==</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_commands_fetched</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_info_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;getTestInfo&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_info_service</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid</span>
+        <span class="c"># try:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_info_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_xml_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_status</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;RunList/Run/Success&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_failed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_status</span> <span class="o">==</span> <span class="s">&#39;N&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_passed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_status</span> <span class="o">==</span> <span class="s">&#39;Y&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failure_code</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;RunList/Run/StatusCode&quot;</span><span class="p">)</span>
+        <span class="c"># populate result object with some peak metrics</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_passed</span> <span class="ow">or</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">failure_code</span> <span class="o">==</span> <span class="s">&#39;ERR_USER_INVALIDATE&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">failure_code</span> <span class="o">==</span> <span class="s">&#39;ERR_SANITY_FAILURE&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manual_peak</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="n">manual</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;ManualPeakIter&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">manual</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">manual_peak</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;ManualPeakIter&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_ops</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;ManualPeakOps&quot;</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_bps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;ManualPeakMbs&quot;</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span> <span class="o">=</span> <span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;Run/PeakIter&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_ops</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;PeakOps&quot;</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">peak_bps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;PeakMbs&quot;</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">peak_achieved</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get_xml_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="p">,</span><span class="s">&quot;PeakAchievedThroughput&quot;</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pair_peak_achieved</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_achieved</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">default_peak</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_ops</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">workload</span> <span class="o">==</span> <span class="n">SPC1_TEST_NAME</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">default_peak</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_achieved</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pair_peak_ops</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_peak</span>
+
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">lp</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">command</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lp_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="c"># get runid nodes because 2-node runs have both in there</span>
+            <span class="n">t_iter_runs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_info_etree</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;//*/RunList/Run&quot;</span><span class="p">)</span>
+            <span class="c"># Some tests have multiple nodes. Grover handles this by</span>
+            <span class="c"># assigning a rundid in sequence for each node. Find the run</span>
+            <span class="c"># caller wants.</span>
+            <span class="k">for</span> <span class="n">t_iter_run</span> <span class="ow">in</span> <span class="n">t_iter_runs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t_iter_run</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;RunId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid</span><span class="p">:</span>
+                    <span class="n">t_iter_nodes</span> <span class="o">=</span> <span class="n">t_iter_run</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;*/IterationObservation&quot;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">t_iter</span> <span class="ow">in</span> <span class="n">t_iter_nodes</span><span class="p">:</span>
+                        <span class="n">lp_id</span> <span class="o">=</span> <span class="n">t_iter</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;IterationId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+                        <span class="c"># if t_iter.find(&quot;IterationId&quot;).text == lp_id:</span>
+                        <span class="k">if</span> <span class="bp">True</span><span class="p">:</span>
+                            <span class="c"># keep track of the load points that have results</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">lp_id_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lp_id</span><span class="p">)</span>
+                            <span class="c"># create command entries at each lp</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                            <span class="n">cmd_nodes</span> <span class="o">=</span> <span class="n">t_iter</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;*/Command&quot;</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cmd_nodes</span><span class="p">:</span>
+                                <span class="c"># perfant has some nil commands. ignore them.</span>
+                                <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">text</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">][</span><span class="n">c</span><span class="o">.</span><span class="n">text</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+                            <span class="c"># now create all command entries by lp</span>
+                            <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp</span><span class="p">[</span><span class="n">lp_id</span><span class="p">][</span><span class="n">cmd</span><span class="p">]</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                                    <span class="k">try</span><span class="p">:</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">[</span><span class="n">cmd</span><span class="p">][</span><span class="n">lp_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+                                    <span class="k">except</span><span class="p">:</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">[</span><span class="n">cmd</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">[</span><span class="n">cmd</span><span class="p">][</span><span class="n">lp_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span><span class="p">:</span>
+                        <span class="c"># yes this could happen</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_index</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_id2lp_index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_lp_id</span><span class="p">)</span>
+
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">two_node_peak</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Deprecated: use getTestInfo instead. Remains only for legacy purposes.&#39;&#39;&#39;</span>
+        <span class="n">partner_runid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">peak_ops1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_peak</span>
+            <span class="n">peak_ops2</span> <span class="o">=</span> <span class="n">GroverResult</span><span class="p">(</span><span class="n">partner_runid</span><span class="p">)</span><span class="o">.</span><span class="n">default_peak</span>
+            <span class="n">peak_bps1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_bps</span>
+            <span class="n">peak_bps2</span> <span class="o">=</span> <span class="n">GroverResult</span><span class="p">(</span><span class="n">partner_runid</span><span class="p">)</span><span class="o">.</span><span class="n">peak_bps</span>
+            <span class="k">return</span> <span class="p">((</span><span class="n">peak_ops1</span><span class="o">+</span><span class="n">peak_ops2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,(</span><span class="n">peak_bps1</span><span class="o">+</span><span class="n">peak_bps2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="c">################################################################################</span></div>
+<span class="k">class</span> <span class="nc">GroverTestMetrics</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">testinfo_etree</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">test</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;//MasterTest/Metrics/Metric/&quot;</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+<span class="c">################################################################################</span>
+
+<span class="k">def</span> <span class="nf">_tags_to_attributes</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Parses the first level of tags and convert to object member attributes.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elem</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;./*&quot;</span><span class="p">):</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">tag</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">text</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="n">tag</span><span class="p">,</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># todo: need to determine if there are any children elems and possibly handle those</span>
+            <span class="c"># recursively</span>
+
+            <span class="c"># setattr(obj,&quot;_&quot;+tag,e)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="n">tag</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">GroverTestInfoIterationObservation</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Embedded IterationObservation object in getTestInfo</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">o_element</span><span class="p">):</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">o_element</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CommandList</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">o_element</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;CommandList/*&quot;</span><span class="p">):</span>
+           <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">&quot;Command&quot;</span><span class="p">:</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">CommandList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GroverTestInfoRun"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverTestInfoRun">[docs]</a><span class="k">class</span> <span class="nc">GroverTestInfoRun</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Read-only object class representing run imbedded in grover getTestInfo XML response. All first level XML tags are converted to object class attributes.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">run_element</span><span class="p">):</span>
+        <span class="c"># parse the first level of test tags and convert to object members</span>
+        <span class="c"># for e in run_element.findall(&quot;./*/&quot;):</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">run_element</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c"># parse iterations observed - IterationObservation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iterob_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lp_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">run_element</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;.//IterationObservationList&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">iterob_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GroverTestInfoIterationObservation</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;IterationId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lp_id_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lp</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroverGetTestInfo"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverGetTestInfo">[docs]</a><span class="k">class</span> <span class="nc">GroverGetTestInfo</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object class representing a Grover getTestInfo web service call. All first level XML tags returned from grover are converted to object class attributes.</span>
+
+<span class="sd">    :param runid: runid of test</span>
+<span class="sd">    :param user: DO NOT CHANGE</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runid</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;auto_script&#39;</span><span class="p">):</span>
+        <span class="n">url_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="n">test_info_service</span> <span class="o">=</span> <span class="n">url_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;getTestInfo&#39;</span><span class="p">)</span>
+        <span class="n">test_info_service</span><span class="o">.</span><span class="n">runid</span> <span class="o">=</span> <span class="n">runid</span>
+        <span class="n">ws_xml_result</span> <span class="o">=</span> <span class="n">url_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="n">test_info_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span> <span class="o">=</span> <span class="n">ws_xml_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+        <span class="s">&quot;lxml etree instance of returned xml&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+        <span class="p">(</span><span class="n">_header</span><span class="p">,</span><span class="n">_body</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">)</span>
+        <span class="c"># (_status,_SitePrefix) = _header.findall(&quot;*&quot;)</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">_header</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># parse the first level of test tags and convert to object members</span>
+        <span class="n">mastertest_elem</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;//MasterTest/&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">mastertest_elem</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># parse all the metrics returned from getTestInfo and store in dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="s">&quot;Object attribute as two-dimentional dictionary containing metrics imbedded in Grover provided ``/MasterTest/Metrics`` XML node. First index is metric name. Second index is desired value. The preferred method to access metrics is through :meth:`get_metric` method.&quot;</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;//MasterTest/Metrics/Metric&quot;</span><span class="p">):</span>
+            <span class="c"># each metric is a dict indexed by name pointing to another dict indexed by</span>
+            <span class="c"># whatever attributes are in the xml (this includes the metric value).</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">_isnum</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">text</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">text</span>
+            <span class="c"># walk attributes from xml save in metric dict</span>
+            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">metric</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+
+        <span class="c"># parse runids associated with this test result</span>
+        <span class="n">run_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;//RunList/Run&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Object attribute containing list of runid&#39;s associated with this run&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Object attribute containing list of :class:`GroverTestInfoRun` objects imbedded in getTestInfo XML response.&quot;</span>
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">run_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;RunId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="c"># create test info run object</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">GroverTestInfoRun</span><span class="p">(</span><span class="n">run</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GroverGetTestInfo.get_metric"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverGetTestInfo.get_metric">[docs]</a>    <span class="k">def</span> <span class="nf">get_metric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">attrib</span><span class="o">=</span><span class="s">&#39;value&#39;</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method to access Grover provided getTestInfo metrics. See :meth:`get_metrics_list` method for current list of known metrics.</span>
+<span class="sd">        </span>
+<span class="sd">        :param name: metric name, i.e. first level :attr:`metrics_dict` key</span>
+<span class="sd">        :param attrib: metric type to return. Known types are ``&#39;value&#39;`` (default) which returns metric value and ``&#39;unit&#39;`` which returns metric units.</span>
+<span class="sd">        :return: dictionary value from :attr:`metrics_dict`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">attrib</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="GroverGetTestInfo.get_metrics_list"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverGetTestInfo.get_metrics_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_metrics_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method that returns list of metrics returned from getTestInfo, i.e. list of :attr:`metrics_dict` first level keys.</span>
+<span class="sd">        </span>
+<span class="sd">        :return: list of strings</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+<span class="c">################################################################################</span>
+</div></div>
+<div class="viewcode-block" id="GroverEventSearchResult"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverEventSearchResult">[docs]</a><span class="k">class</span> <span class="nc">GroverEventSearchResult</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Grover eventSearch embedded Result object.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">e</span><span class="p">):</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroverEventSearch"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverEventSearch">[docs]</a><span class="k">class</span> <span class="nc">GroverEventSearch</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Object class respresenting Grover eventSearch web service call. Event search parameters are extensive and must be checked at time of execution. Object instantiation simply provides a place holder for adding member attributes that are converted to XML name/value pairs in HTML request. The search executes when the :meth:`search` method is invoked. To see full list of parameters display contents of :attr:`GroverEventSearch._service.parameters` attribute.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;auto_script&#39;</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;eventSearch&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="s">&quot;Attribute holding list of :class:`GroverEventSearchResult` objects&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="s">&quot;Attribute holding dictionary of :class:`GroverEventSearchResult` objects indexed by event id&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="s">&quot;Attribute holding dictionary of :class:`GroverEventSearchResult` objects indexed by context id&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="s">&quot;Attribute holding multi-dimensional dictionary indexed by event id as primary key. Within event id dictionary is two indexes: ``&#39;contexts&#39;`` and ``&#39;runids&#39;``. The ``&#39;contexts&#39;`` value contains yet another dictionary indexed by one or more context ids that each contain a :class:`GroverEventSearchResult` object. The ``&#39;runids&#39;`` value is a list of :class:`GroverEventSearchResult` objects&quot;</span>
+        <span class="c"># self._service.parameters.append(&quot;triagetitle&quot;)</span>
+
+<div class="viewcode-block" id="GroverEventSearch.search"><a class="viewcode-back" href="../index.html#GroverWebServices.GroverEventSearch.search">[docs]</a>    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Object method that invokes Grover eventSearch web service.</span>
+
+<span class="sd">        :return: List of event ids matching search criteria. First level XML tags from Grover response as class member attributes.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p</span><span class="p">):</span>
+                <span class="n">value</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+                <span class="c"># value=urllib.quote_plus(value)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">,</span><span class="n">p</span><span class="p">,</span><span class="n">value</span><span class="p">)</span>
+        <span class="c"># call Grover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+
+        <span class="p">(</span><span class="n">_header</span><span class="p">,</span><span class="n">_body</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">)</span>
+        <span class="n">_tags_to_attributes</span><span class="p">(</span><span class="n">_header</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s">&#39;SUCCESS&#39;</span><span class="p">:</span>
+            <span class="c"># don&#39;t think this can occur</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">()</span>
+
+        <span class="c"># (_status,_SitePrefix) = _header.findall(&quot;*&quot;)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result_elems</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;.//ResultList/Result&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_elems</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">GroverEventSearchResult</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="n">event_id</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;EventId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+            <span class="n">context_id</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;ContextId&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">event_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">context_dict</span><span class="p">[</span><span class="n">context_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">runid_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">event_id</span><span class="p">,</span><span class="n">outer_result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_dict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">][</span><span class="s">&#39;result&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">outer_result</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">][</span><span class="s">&#39;contexts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">][</span><span class="s">&#39;runids&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">context_id</span><span class="p">,</span><span class="n">inner_result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_dict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">inner_result</span><span class="o">.</span><span class="n">EventId</span> <span class="o">==</span> <span class="n">outer_result</span><span class="o">.</span><span class="n">EventId</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">][</span><span class="s">&#39;contexts&#39;</span><span class="p">][</span><span class="n">context_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">inner_result</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">primary_dict</span><span class="p">[</span><span class="n">event_id</span><span class="p">][</span><span class="s">&#39;runids&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">inner_result</span><span class="o">.</span><span class="n">ContextRunId</span><span class="p">)</span>
+
+        <span class="c"># return [e.find(&quot;EventId&quot;).text for e in self._event_elems]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</div></div>
+<span class="k">class</span> <span class="nc">GroverRtd</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;auto_script&#39;</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;rtd&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_data_frame</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="nb">id</span><span class="p">,</span><span class="n">baseline_build</span><span class="p">,</span><span class="n">base_build</span><span class="p">,</span><span class="n">compare_build</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">function</span> <span class="o">=</span> <span class="s">&quot;getRTDCSVData&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">rtd_id</span> <span class="o">=</span> <span class="nb">id</span>
+
+        <span class="k">if</span> <span class="n">baseline_build</span> <span class="o">==</span> <span class="s">&quot;LatestApproved&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">bl_build</span> <span class="o">=</span> <span class="n">baseline_build</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">bl_build</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">baseline_build</span><span class="p">)</span><span class="o">.</span><span class="n">grover_time_string</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">bl_codeline</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">baseline_build</span><span class="p">)</span><span class="o">.</span><span class="n">codeline</span>
+
+        <span class="k">if</span> <span class="n">base_build</span> <span class="o">==</span> <span class="s">&quot;LatestApproved&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">base_build</span> <span class="o">=</span> <span class="n">base_build</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">base_build</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">base_build</span><span class="p">)</span><span class="o">.</span><span class="n">grover_time_string</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">base_codeline</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">base_build</span><span class="p">)</span><span class="o">.</span><span class="n">codeline</span>
+
+        <span class="k">if</span> <span class="n">compare_build</span> <span class="o">==</span> <span class="s">&quot;LatestApproved&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">compare_build</span> <span class="o">=</span> <span class="n">compare_build</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">compare_build</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">compare_build</span><span class="p">)</span><span class="o">.</span><span class="n">grover_time_string</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">compare_codeline</span> <span class="o">=</span> <span class="n">getopts</span><span class="o">.</span><span class="n">OntapVersion</span><span class="p">(</span><span class="n">compare_build</span><span class="p">)</span><span class="o">.</span><span class="n">codeline</span>
+
+        <span class="c"># call Grover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&quot;.//RTDCSV&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_string</span>
+
+    <span class="k">def</span> <span class="nf">get_csv_report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">GroverEventCreate</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;auto_script&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;eventCreate&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p</span><span class="p">):</span>
+                <span class="n">value</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">,</span><span class="n">p</span><span class="p">,</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c"># call Grover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+        <span class="n">common</span><span class="o">.</span><span class="n">_set_attributes_from_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s">&#39;SUCCESS&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unsuccesfull eventCreate. Returned status: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">EventId</span>
+
+<span class="k">class</span> <span class="nc">GroverEventAddRunIds</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;auto_script&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="n">WebService</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">site</span><span class="o">=</span><span class="n">GROVER_SITE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">get_service</span><span class="p">(</span><span class="s">&#39;eventAddRunIds&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_id</span><span class="p">,</span> <span class="n">runids</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">eventid</span> <span class="o">=</span> <span class="n">event_id</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">runids</span> <span class="o">=</span> <span class="n">runids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">runid</span> <span class="ow">in</span> <span class="n">runids</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="o">.</span><span class="n">runids</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span><span class="o">+</span><span class="n">runid</span>
+
+        <span class="c"># call Grover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">call_service</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws_result</span><span class="o">.</span><span class="n">get_tree</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_etree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+        <span class="n">common</span><span class="o">.</span><span class="n">_set_attributes_from_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_message</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_unit_test</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&quot;hello world&quot;</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">_unit_test</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">GroverWebServices API .1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Bob Allegretti.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
